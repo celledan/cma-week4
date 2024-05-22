@@ -79,3 +79,45 @@ gpx_data <- gpx_data %>% mutate(
   easting = st_coordinates(geometry)[, 1],
   northing = st_coordinates(geometry)[, 2]
 )
+
+#Task 1
+distance_by_element <- function(later, now) {
+  as.numeric(
+    st_distance(later, now, by_element = TRUE)
+  )
+}
+
+#The time window of my data is irregular. How do I define how many points need 
+#to be calculated if the number of points varies?
+gpx_data <- gpx_data |>
+  mutate(
+    nMinus2 = distance_by_element(lag(geometry, 2), geometry),  # distance to pos ?minutes
+    nMinus1 = distance_by_element(lag(geometry, 1), geometry),  # distance to pos ? minutes
+    nPlus1  = distance_by_element(geometry, lead(geometry, 1)), # distance to pos ? mintues
+    nPlus2  = distance_by_element(geometry, lead(geometry, 2)))  # distance to pos ? minutes
+
+
+#Calculate the mean distance
+gpx_data <- gpy_data |>
+  rowwise() |>
+  mutate(
+    stepMean = mean(c(nMinus2, nMinus1, nPlus1, nPlus2))
+  ) |>
+  ungroup()
+
+gpx_data
+
+#Step c) remove static points
+gpx_data <- gpx_data |>
+  mutate(static = stepMean < mean(stepMean, na.rm = TRUE))
+
+data_filter <- gpx_data |>
+  filter(!static)
+
+data_filter |>
+  ggplot(aes(E, N)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme(legend.position = "bottom")
+#no plot
